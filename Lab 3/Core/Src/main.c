@@ -97,7 +97,18 @@ int main(void)
 		GPIO_NOPULL
 	};
 	
+	GPIO_InitTypeDef dimLEDs = {
+		GPIO_PIN_6 | GPIO_PIN_7,
+		GPIO_MODE_AF_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
 	HAL_GPIO_Init(GPIOC, &LEDs);
+	HAL_GPIO_Init(GPIOC, &dimLEDs);
+	
+	GPIOC->AFR[0] &= ~(GPIO_AFRL_AFSEL7);
+	GPIOC->AFR[0] &= ~(GPIO_AFRL_AFSEL6);
 	
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
 	
@@ -106,8 +117,8 @@ int main(void)
 	TIM2->PSC = 7999;
 	
 	// TIM3: Set ARR and PSC to achieve a timer of 800 Hz
-	TIM3->ARR = 5;
-	TIM3->PSC = 1999;
+	TIM3->ARR = 20;
+	TIM3->PSC = 499;
 	
 	// Setup the PWM
 	TIM3->CCMR1 &= ~(TIM_CCMR1_CC1S);
@@ -127,14 +138,15 @@ int main(void)
 	TIM3->CCER |= TIM_CCER_CC2E;
 	
 	// Set duty cycle
-	TIM3->CCR1 = 1;
-	TIM3->CCR2 = 1;
+	TIM3->CCR1 = 18;
+	TIM3->CCR2 = 2;
 	
 	// Enable the Update Interrupt Event
 	TIM2->DIER |= TIM_DIER_UIE;
 	
 	// Enable the timer 
 	TIM2->CR1 |= TIM_CR1_CEN;
+	TIM3->CR1 |= TIM_CR1_CEN;
 	
 	// Enable the interrupt
 	NVIC_EnableIRQ(TIM2_IRQn);
