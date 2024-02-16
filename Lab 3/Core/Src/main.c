@@ -86,6 +86,7 @@ int main(void)
 	
 	// Enable RCC
 	__HAL_RCC_TIM2_CLK_ENABLE();
+	__HAL_RCC_TIM3_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	
 	// Configure LEDs
@@ -100,9 +101,34 @@ int main(void)
 	
 	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
 	
-	// Set ARR and PSC to achieve a timer of 4 Hz
+	// TIM2: Set ARR and PSC to achieve a timer of 4 Hz
 	TIM2->ARR = 250;
 	TIM2->PSC = 7999;
+	
+	// TIM3: Set ARR and PSC to achieve a timer of 800 Hz
+	TIM3->ARR = 5;
+	TIM3->PSC = 1999;
+	
+	// Setup the PWM
+	TIM3->CCMR1 &= ~(TIM_CCMR1_CC1S);
+	TIM3->CCMR1 &= ~(TIM_CCMR1_CC2S);
+	
+	TIM3->CCMR1 |= TIM_CCMR1_OC1M;
+	
+	TIM3->CCMR1 |= TIM_CCMR1_OC2M_2;
+	TIM3->CCMR1 |= TIM_CCMR1_OC2M_1;
+	TIM3->CCMR1 &= ~(TIM_CCMR1_OC2M_0);
+	
+	TIM3->CCMR1 |= TIM_CCMR1_OC1PE;
+	TIM3->CCMR1 |= TIM_CCMR1_OC2PE;
+	
+	// Enable the PWM outputs
+	TIM3->CCER |= TIM_CCER_CC1E;
+	TIM3->CCER |= TIM_CCER_CC2E;
+	
+	// Set duty cycle
+	TIM3->CCR1 = 1;
+	TIM3->CCR2 = 1;
 	
 	// Enable the Update Interrupt Event
 	TIM2->DIER |= TIM_DIER_UIE;
