@@ -83,6 +83,35 @@ int main(void)
 
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
+	
+	// Enable RCC
+	__HAL_RCC_TIM2_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	
+	// Configure LEDs
+	GPIO_InitTypeDef LEDs = {
+		GPIO_PIN_9 | GPIO_PIN_8,
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	HAL_GPIO_Init(GPIOC, &LEDs);
+	
+	HAL_GPIO_WritePin(GPIOC, GPIO_PIN_8, GPIO_PIN_SET);
+	
+	// Set ARR and PSC to achieve a timer of 4 Hz
+	TIM2->ARR = 250;
+	TIM2->PSC = 7999;
+	
+	// Enable the Update Interrupt Event
+	TIM2->DIER |= TIM_DIER_UIE;
+	
+	// Enable the timer 
+	TIM2->CR1 |= TIM_CR1_CEN;
+	
+	// Enable the interrupt
+	NVIC_EnableIRQ(TIM2_IRQn);
 
   /* USER CODE END 2 */
 

@@ -141,6 +141,9 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
-
+void TIM2_IRQHandler(void) {
+	TIM2->SR &= ~(TIM_SR_UIF);
+	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+}
 /* USER CODE END 1 */
 
