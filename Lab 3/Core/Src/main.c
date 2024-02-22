@@ -138,8 +138,8 @@ int main(void)
 	TIM3->CCER |= TIM_CCER_CC2E;
 	
 	// Set duty cycle
-	TIM3->CCR1 = 18;
-	TIM3->CCR2 = 2;
+	TIM3->CCR1 = 19;
+	TIM3->CCR2 = 1;
 	
 	// Enable the Update Interrupt Event
 	TIM2->DIER |= TIM_DIER_UIE;

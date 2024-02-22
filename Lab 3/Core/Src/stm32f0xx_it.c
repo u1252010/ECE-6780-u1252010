@@ -144,6 +144,13 @@ void SysTick_Handler(void)
 void TIM2_IRQHandler(void) {
 	TIM2->SR &= ~(TIM_SR_UIF);
 	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_8 | GPIO_PIN_9);
+	if (TIM3->CCR1 == 20 || TIM3->CCR2 == 0) {
+		TIM3->CCR1 = 0;
+		TIM3->CCR2 = 20;
+	} else {
+		TIM3->CCR1 = TIM3->CCR1 + 1;
+		TIM3->CCR2 = TIM3->CCR2 - 1;
+	}
 }
 /* USER CODE END 1 */
 
