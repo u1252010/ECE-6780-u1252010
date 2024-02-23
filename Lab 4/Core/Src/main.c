@@ -61,10 +61,9 @@ void SystemClock_Config(void);
   */
 
 void transmitChar(char input) {
-	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9, GPIO_PIN_SET);
 	while (!(USART3->ISR & (1<<7))) {
 		// Waiting
-	};
+	}
 		
 	USART3->TDR = input;
 }
@@ -78,6 +77,34 @@ void transmitStr(char input[]) {
 		transmitChar(input[i]);
 		i += 1;
 	}
+}
+
+void recieve(void) {
+	while (!(USART3->ISR & (1<<5))) {
+		// Waiting
+	}
+	
+	/*
+	PC6 - RED
+	PC7 - BLUE
+	PC8 - ORANGE
+	PC9 - GREEN
+	*/
+	
+	char input = USART3->RDR;
+	
+	if (input == 'R' || input == 'r') {
+		GPIOC->ODR ^= GPIO_ODR_6;
+	} else if (input == 'B' || input == 'b') {
+		GPIOC->ODR ^= GPIO_ODR_7;
+	} else if (input == 'O' || input == 'o') {
+		GPIOC->ODR ^= GPIO_ODR_8;
+	} else if (input == 'G' || input == 'g') {
+		GPIOC->ODR ^= GPIO_ODR_9;
+	} else {
+		transmitStr("Wrong LED code, try r,b,o,g\r");
+	}
+	
 }
 
 int main(void)
@@ -114,6 +141,13 @@ int main(void)
 	
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_USART3_CLK_ENABLE();
+	
+	/*
+	PC6 - RED
+	PC7 - BLUE
+	PC8 - ORANGE
+	PC9 - GREEN
+	*/
 	
 	GPIO_InitTypeDef LEDs = {
 		GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
@@ -158,8 +192,10 @@ int main(void)
     /* USER CODE END WHILE */
 		
 		// transmitChar('c');
-		transmitStr(message);
-		HAL_Delay(500);
+		//transmitStr(message);
+		//HAL_Delay(500);
+		
+		recieve();
 		
     /* USER CODE BEGIN 3 */
   }
