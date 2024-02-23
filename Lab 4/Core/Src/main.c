@@ -52,7 +52,8 @@ void SystemClock_Config(void);
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+extern volatile char newDataVal;
+extern volatile int newDataFlag;
 /* USER CODE END 0 */
 
 /**
@@ -79,7 +80,7 @@ void transmitStr(char input[]) {
 	}
 }
 
-void recieve(void) {
+void receive1(void) {
 	while (!(USART3->ISR & (1<<5))) {
 		// Waiting
 	}
@@ -101,6 +102,90 @@ void recieve(void) {
 		GPIOC->ODR ^= GPIO_ODR_8;
 	} else if (input == 'G' || input == 'g') {
 		GPIOC->ODR ^= GPIO_ODR_9;
+	} else {
+		transmitStr("Wrong LED code, try r,b,o,g\r");
+	}
+	
+}
+
+void switchLED(int pin, int mode) {
+	if (pin == 6) {
+		if (mode == '0') {
+			GPIOC->ODR &= ~(GPIO_ODR_6);
+		} else if (mode == '1') {
+			GPIOC->ODR |= GPIO_ODR_6;
+		} else if (mode == '2') {
+			GPIOC->ODR ^= GPIO_ODR_6;
+		} else {
+			transmitStr("Wrong option code, try 0,1,2\r");
+		}
+	} else if (pin == 7) {
+		if (mode == '0') {
+			GPIOC->ODR &= ~(GPIO_ODR_7);
+		} else if (mode == '1') {
+			GPIOC->ODR |= GPIO_ODR_7;
+		} else if (mode == '2'){ 
+			GPIOC->ODR ^= GPIO_ODR_7;
+		} else {
+			transmitStr("Wrong option code, try 0,1,2\r");
+		}
+	} else if (pin == 8) {
+		if (mode == '0') {
+			GPIOC->ODR &= ~(GPIO_ODR_8);
+		} else if (mode == '1') {
+			GPIOC->ODR |= GPIO_ODR_8;
+		} else if (mode == '2') {
+			GPIOC->ODR ^= GPIO_ODR_8;
+		} else {
+			transmitStr("Wrong option code, try 0,1,2\r");
+		}
+	} else if (pin == 9) {
+		if (mode == '0') {
+			GPIOC->ODR &= ~(GPIO_ODR_9);
+		} else if (mode == '1') {
+			GPIOC->ODR |= GPIO_ODR_9;
+		} else if (mode == '2') {
+			GPIOC->ODR ^= GPIO_ODR_9;
+		} else {
+			transmitStr("Wrong option code, try 0,1,2\r");
+		}
+	}
+}
+
+void receive2(void) {
+	transmitStr("CMD?");
+	
+	while (!newDataFlag) {
+		// Waiting
+	}
+
+	char command1 = newDataVal;
+	transmitStr(&command1);
+	newDataFlag = 0;
+	
+	while (!newDataFlag) {
+		// Waiting
+	}
+	
+	char command2 = newDataVal;
+	transmitStr(&command2);
+	newDataFlag = 0;
+	
+	/*
+	PC6 - RED
+	PC7 - BLUE
+	PC8 - ORANGE
+	PC9 - GREEN
+	*/
+	
+	if (command1 == 'R' || command1 == 'r') {
+		switchLED(6,command2);
+	} else if (command1 == 'B' || command1 == 'b') {
+		switchLED(7,command2);
+	} else if (command1 == 'O' || command1 == 'o') {
+		switchLED(8,command2);
+	} else if (command1 == 'G' || command1 == 'g') {
+		switchLED(9,command2);
 	} else {
 		transmitStr("Wrong LED code, try r,b,o,g\r");
 	}
@@ -176,17 +261,21 @@ int main(void)
 	USART3->BRR = USART_div;
 	
 	USART3->CR1 |= USART_CR1_TE;
-	
 	USART3->CR1 |= USART_CR1_RE;
+	USART3->CR1 |= USART_CR1_RXNEIE;
+	
 	
 	USART3->CR1 |= USART_CR1_UE;
+	NVIC_EnableIRQ(USART3_4_IRQn);
+	NVIC_SetPriority(USART3_4_IRQn,1);
+	
 	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
   
-	char message[] = "Hello Putty!\n";
+	//char message[] = "Hello Putty!\r";
 	while (1)
   {
     /* USER CODE END WHILE */
@@ -195,7 +284,7 @@ int main(void)
 		//transmitStr(message);
 		//HAL_Delay(500);
 		
-		recieve();
+		receive2();
 		
     /* USER CODE BEGIN 3 */
   }

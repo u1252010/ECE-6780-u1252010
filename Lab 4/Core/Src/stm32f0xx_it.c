@@ -141,6 +141,11 @@ void SysTick_Handler(void)
 /******************************************************************************/
 
 /* USER CODE BEGIN 1 */
-
+volatile char newDataVal;
+volatile int newDataFlag;
+void USART3_4_IRQHandler(void) {
+	newDataVal = USART3->RDR;
+	newDataFlag = 1;
+}
 /* USER CODE END 1 */
 
