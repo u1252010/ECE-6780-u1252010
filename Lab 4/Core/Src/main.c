@@ -59,6 +59,27 @@ void SystemClock_Config(void);
   * @brief  The application entry point.
   * @retval int
   */
+
+void transmitChar(char input) {
+	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9, GPIO_PIN_SET);
+	while (!(USART3->ISR & (1<<7))) {
+		// Waiting
+	};
+		
+	USART3->TDR = input;
+}
+
+void transmitStr(char input[]) {
+	int i = 0;
+	while (1) {
+		if (input[i] == 0) {
+			break;
+		}
+		transmitChar(input[i]);
+		i += 1;
+	}
+}
+
 int main(void)
 {
   /* USER CODE BEGIN 1 */
@@ -83,15 +104,63 @@ int main(void)
 
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
-
+	
+	/*
+	Using USART3
+	USART_TX - PC4
+	USART_RX - PC5
+	Alternate function mode: AF1
+	*/
+	
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_USART3_CLK_ENABLE();
+	
+	GPIO_InitTypeDef LEDs = {
+		GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	GPIO_InitTypeDef com = {
+		GPIO_PIN_4 | GPIO_PIN_5,
+			GPIO_MODE_AF_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	HAL_GPIO_Init(GPIOC,&com);
+	HAL_GPIO_Init(GPIOC,&LEDs);
+	
+	GPIOC->AFR[0] |= (1<<16);
+	GPIOC->AFR[0] |= (1<<20);
+	
+	int baud = 115200;
+	
+	int USART_div = HAL_RCC_GetHCLKFreq() / baud;
+	
+	USART3->BRR = USART_div;
+	
+	USART3->CR1 |= USART_CR1_TE;
+	
+	USART3->CR1 |= USART_CR1_RE;
+	
+	USART3->CR1 |= USART_CR1_UE;
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  
+	char message[] = "Hello Putty!\n";
+	while (1)
   {
     /* USER CODE END WHILE */
-
+		
+		// transmitChar('c');
+		transmitStr(message);
+		HAL_Delay(500);
+		
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
