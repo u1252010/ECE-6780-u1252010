@@ -48,6 +48,72 @@
 void SystemClock_Config(void);
 /* USER CODE BEGIN PFP */
 
+	void I2CWho(void) {
+		// Set up transaction parameters
+		I2C2->CR2 &= ~((0x7F << 16) | (0x3FF<<0));
+		I2C2->CR2 |= (0x69<<1); // slave address
+		I2C2->CR2 |= (1<<16);  // # bytes to transmit
+		I2C2->CR2 &= ~(1<<10); // indicate write operation
+		I2C2->CR2 |= (1<<13); // set start bit
+		
+		/*
+		PC6 - RED
+		PC7 - BLUE
+		PC8 - ORANGE
+		PC9 - GREEN
+		*/
+		
+		HAL_GPIO_WritePin(GPIOC,GPIO_PIN_7,GPIO_PIN_SET);
+		while (!(I2C2->ISR & I2C_ISR_NACKF) & !(I2C2->ISR & I2C_ISR_TXIS)) {
+			// waiting
+
+		}
+		
+		if (I2C2->ISR & I2C_ISR_NACKF) {
+			// NACKF set
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_SET);
+			return;
+		}
+		if (I2C2->ISR & I2C_ISR_TXIS) {
+			// TXIS set
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_8, GPIO_PIN_SET);
+		}
+		
+		HAL_GPIO_TogglePin(GPIOC,GPIO_PIN_7);
+		I2C2->TXDR |= (0xF); 
+		
+		while (!(I2C2->ISR & (1<<6))) {
+			// waiting for TC
+		}
+
+		
+		I2C2->CR2 |= (0x69<<1); // slave address
+		I2C2->CR2 |= (1<<16);  // # bytes to transmit
+		I2C2->CR2 |= (1<<10); // indicate read operation
+		I2C2->CR2 |= (1<<13); // set start bit
+		
+		while (!((I2C2->ISR & (1<<4)) || (I2C2->ISR & (1<<2)))) {
+			// waiting
+		}
+		
+		if (I2C2->ISR & (1<<4)) {
+			// NACKF set
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_SET);
+			return;
+		}
+		
+		while (!(I2C2->ISR & (1<<6))) {
+			// waiting for TC
+		}
+		
+		if (I2C2->RXDR & 0xD3) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9, GPIO_PIN_SET);
+		}
+		
+		I2C2->CR2 |= (1<<14);
+		
+	}
+	
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -71,7 +137,7 @@ int main(void)
   HAL_Init();
 
   /* USER CODE BEGIN Init */
-
+	
   /* USER CODE END Init */
 
   /* Configure the system clock */
@@ -84,11 +150,82 @@ int main(void)
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
 
+	__HAL_RCC_GPIOB_CLK_ENABLE();
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_I2C2_CLK_ENABLE();
+	
+	GPIO_InitTypeDef com = {
+		GPIO_PIN_11 | GPIO_PIN_13,
+		GPIO_MODE_AF_OD,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	GPIO_InitTypeDef out1 = {
+		GPIO_PIN_14,
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	GPIO_InitTypeDef out2 = {
+		GPIO_PIN_0,
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	GPIO_InitTypeDef in = {
+		GPIO_PIN_15,
+		GPIO_MODE_INPUT,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	
+	/*
+	PC6 - RED
+	PC7 - BLUE
+	PC8 - ORANGE
+	PC9 - GREEN
+	*/
+	
+	GPIO_InitTypeDef LEDs = {
+		GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	HAL_GPIO_Init(GPIOB,&com);
+	HAL_GPIO_Init(GPIOB,&out1);
+	HAL_GPIO_Init(GPIOC,&out2);
+	HAL_GPIO_Init(GPIOB,&in);
+	HAL_GPIO_Init(GPIOC,&LEDs);
+	
+	GPIOB->AFR[1] |= (1<<12);
+	GPIOB->AFR[1] |= (1<<20);
+	GPIOB->AFR[1] |= (1<<22);
+	
+	HAL_GPIO_WritePin(GPIOB,GPIO_PIN_14, GPIO_PIN_SET);
+	HAL_GPIO_WritePin(GPIOC,GPIO_PIN_0, GPIO_PIN_SET);
+	
+	// Set up timing
+	I2C2->TIMINGR |= (1<<28);
+	I2C2->TIMINGR |= (0x13<<0);
+	I2C2->TIMINGR |= (0xF<<8);
+	I2C2->TIMINGR |= (0x2<<16);
+	I2C2->TIMINGR |= (0x4<<20);
+	
+	// Enable I2C2
+	I2C2->CR1 |= (1<<0);
+
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
+  I2CWho();
+	while (1)
   {
     /* USER CODE END WHILE */
 
