@@ -85,7 +85,6 @@ void SystemClock_Config(void);
 		while (!(I2C2->ISR & (1<<6))) {
 			// waiting for TC
 		}
-
 		
 		I2C2->CR2 |= (0x69<<1); // slave address
 		I2C2->CR2 |= (1<<16);  // # bytes to transmit
@@ -114,6 +113,131 @@ void SystemClock_Config(void);
 		
 	}
 	
+	void I2CInit(char address, char mode, unsigned char bytes) {
+		I2C2->CR2 &= ~((0x7F << 16) | (0x3FF<<0));
+		I2C2->CR2 |= (address<<1); // slave address
+		I2C2->CR2 |= (bytes<<16);  // # bytes to transmit
+		if (mode == 'w' || mode == 'W') {
+			I2C2->CR2 &= ~(1<<10); // indicate write operation
+		} else if (mode == 'r' || mode == 'R') {
+			I2C2->CR2 |= (1<<10); // indicate read operation
+		}
+		
+	}
+	
+	void I2CStart(void) {
+		I2C2->CR2 |= (1<<13); // set start bit
+	}
+	
+	void I2CWaitWrite(void) {
+		while (!(I2C2->ISR & I2C_ISR_NACKF) & !(I2C2->ISR & I2C_ISR_TXIS)) {
+			// waiting
+		}
+		
+		if (I2C2->ISR & I2C_ISR_NACKF) {
+			// NACKF set
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_SET);
+			return;
+		}
+	}
+	
+	void I2CWaitRead(void) {
+		while (!(I2C2->ISR & I2C_ISR_NACKF) & !(I2C2->ISR & I2C_ISR_RXNE)) {
+			// waiting
+		}
+		
+		if (I2C2->ISR & I2C_ISR_NACKF) {
+			// NACKF set
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_SET);
+			return;
+		}
+	}
+	
+	void I2CWrite(char msg) {
+		
+		I2C2->TXDR = msg;
+		
+	}
+	
+	char I2CRead(void) {
+		
+		char msg = I2C2->RXDR; // read msg
+		
+		return msg; // return msg
+		
+	}
+	
+	void I2CWaitTC(void) {
+		while (!(I2C2->ISR & (1<<6))) {
+			// waiting for TC
+		}
+	}
+	
+	void I2CStop(void) {
+		
+		I2C2->CR2 |= (1<<14); // set stop bit 
+	}
+	
+	void I2CWriteRegister(char address, char reg, char value) {
+		I2CInit(address,'w',2);
+		I2CStart();
+		I2CWaitWrite();
+		I2CWrite(reg);
+		I2CWaitWrite();
+		I2CWrite(value);
+		I2CWaitTC();
+		I2CStop();
+	}
+	
+	char I2CReadRegister(char address, char reg) {
+		I2CInit(address,'w',1);
+		I2CStart();
+		I2CWaitWrite();
+		I2CWrite(reg);
+		I2CWaitTC();
+		I2CInit(address,'r',1);
+		I2CStart();
+		I2CWaitRead();
+		char result = I2CRead();
+		I2CWaitTC();
+		I2CStop();
+		
+		return result; 
+	}
+	
+	void tilt(void) {
+		char xl = I2CReadRegister(0x69,0x28);
+		HAL_Delay(10);
+		char xh = I2CReadRegister(0x69,0x29);
+		HAL_Delay(10);
+		char yl = I2CReadRegister(0x69,0x2A);
+		HAL_Delay(10);
+		char yh = I2CReadRegister(0x69,0x2B);
+		
+		short int x = (xh<<8) | xl;
+		if (x > 600) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_8,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9,GPIO_PIN_SET);
+		} else if (x < -600) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_8,GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9,GPIO_PIN_RESET);
+		} else{
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_8,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9,GPIO_PIN_RESET);
+		}
+		
+		short int y = (yh<<8) | yl;
+		if (y > 600) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6,GPIO_PIN_SET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_7,GPIO_PIN_RESET);
+		} else if (y < -600) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_7,GPIO_PIN_SET);
+		} else {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6,GPIO_PIN_RESET);
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_7,GPIO_PIN_RESET);
+		}
+}
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -219,16 +343,31 @@ int main(void)
 	
 	// Enable I2C2
 	I2C2->CR1 |= (1<<0);
+	
+	// Set up the gyro
+	//I2CWho();
+	
+	I2CWriteRegister(0x69,0x20,0xB);
+	
+	HAL_Delay(100);
+	
+	char result = I2CReadRegister(0x69,0x20);
+	
+	if (result == 0xB) {
+		HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9, GPIO_PIN_SET);
+	}
 
   /* USER CODE END 2 */
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  I2CWho();
+  // I2CWho();
+
 	while (1)
   {
     /* USER CODE END WHILE */
-
+		HAL_Delay(100);
+		tilt();
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
