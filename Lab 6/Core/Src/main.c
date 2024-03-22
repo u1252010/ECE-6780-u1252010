@@ -84,6 +84,52 @@ int main(void)
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
 
+	__HAL_RCC_GPIOC_CLK_ENABLE();
+	__HAL_RCC_ADC1_CLK_ENABLE();
+	
+	/*
+	PC6 - RED
+	PC7 - BLUE
+	PC8 - ORANGE
+	PC9 - GREEN
+	*/
+	
+	GPIO_InitTypeDef LEDs = {
+		GPIO_PIN_6 | GPIO_PIN_7 | GPIO_PIN_8 | GPIO_PIN_9,
+		GPIO_MODE_OUTPUT_PP,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	GPIO_InitTypeDef ADC_In = {
+		GPIO_PIN_0,
+		GPIO_MODE_ANALOG,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
+	HAL_GPIO_Init(GPIOC,&LEDs);
+	HAL_GPIO_Init(GPIOC,&ADC_In);
+	
+	ADC1->CFGR1 |= (1<<13); // Continuous conversion mode
+	ADC1->CFGR1 |= (1<<4); // 8-bit resolution
+	ADC1->CFGR1 &= ~(0x3<<10); // Disable hardware triggers
+	
+	ADC1->CHSELR |= (1<<10); // Select channel 10
+	
+	// Perform ADC self-calibration
+	ADC1->CR |= (1<<31);
+	
+	while (ADC1->CR & (1<<31)) {
+		// wait for calibration to finish.
+	}
+	
+	ADC1->CR |= ADC_CR_ADEN; // Enable ADC
+	
+	ADC1->CR |= ADC_CR_ADSTART; // Begin conversion
+
+	unsigned short int data;
+	
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -91,7 +137,30 @@ int main(void)
   while (1)
   {
     /* USER CODE END WHILE */
-
+		data = ADC1->DR;
+		
+		if (data > 0) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9, GPIO_PIN_SET);
+		} else {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_9, GPIO_PIN_RESET);
+		}
+		if (data > 64) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_7, GPIO_PIN_SET);
+		} else {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_7, GPIO_PIN_RESET);
+		}
+		if (data > 128) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_8, GPIO_PIN_SET);
+		} else {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_8, GPIO_PIN_RESET);
+		}
+		if (data > 192) {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_SET);
+		} else {
+			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_RESET);
+		}
+					
+		
     /* USER CODE BEGIN 3 */
   }
   /* USER CODE END 3 */
