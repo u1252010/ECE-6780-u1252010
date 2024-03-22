@@ -84,8 +84,10 @@ int main(void)
   /* Initialize all configured peripherals */
   /* USER CODE BEGIN 2 */
 
+	__HAL_RCC_GPIOA_CLK_ENABLE();
 	__HAL_RCC_GPIOC_CLK_ENABLE();
 	__HAL_RCC_ADC1_CLK_ENABLE();
+	__HAL_RCC_DAC1_CLK_ENABLE();
 	
 	/*
 	PC6 - RED
@@ -108,9 +110,18 @@ int main(void)
 		GPIO_NOPULL
 	};
 	
+	GPIO_InitTypeDef DAC_Out = {
+		GPIO_PIN_4,
+		GPIO_MODE_ANALOG,
+		GPIO_SPEED_FREQ_LOW,
+		GPIO_NOPULL
+	};
+	
 	HAL_GPIO_Init(GPIOC,&LEDs);
 	HAL_GPIO_Init(GPIOC,&ADC_In);
+	HAL_GPIO_Init(GPIOA,&DAC_Out);
 	
+	/* ADC Setup */
 	ADC1->CFGR1 |= (1<<13); // Continuous conversion mode
 	ADC1->CFGR1 |= (1<<4); // 8-bit resolution
 	ADC1->CFGR1 &= ~(0x3<<10); // Disable hardware triggers
@@ -126,10 +137,38 @@ int main(void)
 	
 	ADC1->CR |= ADC_CR_ADEN; // Enable ADC
 	
+	while (!(ADC1->ISR & (1<<0))) {
+		// wait for ADC to be ready
+	}
+	
 	ADC1->CR |= ADC_CR_ADSTART; // Begin conversion
 
-	unsigned short int data;
+	unsigned short int data; // ADC Data Variable
 	
+	/* DAC Setup */
+	
+	// PA4 - DAC_OUT1
+	DAC1->CR |= (0x7<<3); // Set software trigger
+	DAC1->CR |= (1<<0); // Enable channel 1
+	
+	// Sine Wave: 8-bit, 32 samples/cycle
+	const uint8_t sine_table[32] = {127,151,175,197,216,232,244,251,254,251,244,
+		232,216,197,175,151,127,102,78,56,37,21,9,2,0,2,9,21,37,56,78,102};
+	
+	// Triangle Wave: 8-bit, 32 samples/cycle
+	const uint8_t triangle_table[32] = {0,15,31,47,63,79,95,111,127,142,158,174,
+		190,206,222,238,254,238,222,206,190,174,158,142,127,111,95,79,63,47,31,15};
+	
+	// Sawtooth Wave: 8-bit, 32 samples/cycle
+	const uint8_t sawtooth_table[32] = {0,7,15,23,31,39,47,55,63,71,79,87,95,103,
+		111,119,127,134,142,150,158,166,174,182,190,198,206,214,222,230,238,246};
+	
+	// Square Wave: 8-bit, 32 samples/cycle
+	const uint8_t square_table[32] = {254,254,254,254,254,254,254,254,254,254,
+		254,254,254,254,254,254,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0};
+	
+	unsigned short int index = 0;
+		
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -159,7 +198,16 @@ int main(void)
 		} else {
 			HAL_GPIO_WritePin(GPIOC,GPIO_PIN_6, GPIO_PIN_RESET);
 		}
-					
+		
+		if (index >= 32) {
+			index = 0;
+		}
+		
+		DAC1->DHR8R1 = sawtooth_table[index];
+		
+		index++;
+		
+		HAL_Delay(1);
 		
     /* USER CODE BEGIN 3 */
   }
